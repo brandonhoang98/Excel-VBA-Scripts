@@ -1,0 +1,108 @@
+Sub ThirtyReportSort()
+'Assume that QB report has already sorted by status and contractor
+
+Dim MainSheet As Worksheet
+Dim WorkRng As Range
+
+
+
+Set MainSheet = Application.ActiveSheet
+Call dealerCust30Split(MainSheet, "Registration - Dealer", "OUT OF WARRANTY")
+
+
+End Sub
+
+Sub dealerCust30Split(origSheet As Worksheet, dealerName As String, warrantyName As String)
+    Dim sheetOne As Worksheet
+    Dim sheetTwo As Worksheet
+    Dim sheetThree As Worksheet
+    Dim sheetFour As Worksheet
+    Dim sheetFive As Worksheet
+    Dim sheetSix As Worksheet
+    
+    Set sheetOne = Sheets.Add
+    sheetOne.Name = "CustomerUnder30"
+    Set sheetTwo = Sheets.Add
+    sheetTwo.Name = "CustomerOver30"
+    Set sheetThree = Sheets.Add
+    sheetThree.Name = "DealerUnder30Warranty"
+    Set sheetFour = Sheets.Add
+    sheetFour.Name = "DealerOver30Warranty"
+    Set sheetFive = Sheets.Add
+    sheetFive.Name = "Out of Warranty"
+    Set sheetSix = Sheets.Add
+    sheetSix.Name = "RSS"
+    
+    
+    origSheet.Activate
+    Dim findRange As Range
+    Dim dealerCol As Integer
+    Dim warrantyCol As Integer
+    Set findRange = origSheet.Rows(1).Find(What:=dealerName, LookAt:=xlPart)
+    dealerCol = findRange.Column
+    Set findRange = origSheet.Rows(1).Find(What:=warrantyName, LookAt:=xlPart)
+    warrantyCol = findRange.Column
+
+    Dim Index As Integer
+    Index = 2
+    Do Until IsEmpty(Cells(Index, 1))
+    If (Cells(Index, 15).Value = "RSS Products") Then
+        Call rowTransfer(origSheet, sheetSix, Index)
+    ElseIf (Cells(Index, warrantyCol).Value = "yes" And Cells(Index, dealerCol).Value = "no") Then
+        Call rowTransfer(origSheet, sheetFive, Index)
+    Else
+        If (Cells(Index, dealerCol).Value = "yes") Then
+            If (OverThirtyDay(Cells(Index, 4).Value)) Then
+                Call rowTransfer(origSheet, sheetFour, Index)
+            Else
+                Call rowTransfer(origSheet, sheetThree, Index)
+            End If
+        Else
+            If (OverThirtyDay(Cells(Index, 4).Value)) Then
+                Call rowTransfer(origSheet, sheetTwo, Index)
+            Else
+                Call rowTransfer(origSheet, sheetOne, Index)
+            End If
+        End If
+    End If
+        origSheet.Activate
+        Index = Index + 1
+    Loop
+
+Index = 1
+Call rowTransfer(origSheet, sheetOne, Index)
+Call rowTransfer(origSheet, sheetTwo, Index)
+Call rowTransfer(origSheet, sheetThree, Index)
+Call rowTransfer(origSheet, sheetFour, Index)
+Call rowTransfer(origSheet, sheetFive, Index)
+Call rowTransfer(origSheet, sheetSix, Index)
+
+End Sub
+
+Function OverThirtyDay(x As Date) As Boolean
+'Use Date() to pull current date
+'Use DateDiff(interval, date1, date2)
+    Dim todayDate As Date
+    todayDate = Date
+    Dim diffDate As Integer
+    diffDate = DateDiff("d", x, todayDate)
+    If diffDate >= 30 Then
+        OverThirtyDay = True
+    Else
+        OverThirtyDay = False
+    End If
+End Function
+
+Sub rowTransfer(origSheet As Worksheet, destSheet As Worksheet, rowIndex As Integer)
+    destSheet.Activate
+    origSheet.Rows(rowIndex).Copy
+    destSheet.Rows(1).Insert Shift:=xlDown
+    If (Cells(1, 2).Value = "Scheduled") Then
+        Rows(1).Interior.ColorIndex = 27
+    End If
+    ActiveSheet.Columns("A:U").AutoFit
+    ActiveSheet.Columns("A:U").RowHeight = 15
+End Sub
+
+
+

@@ -1,0 +1,115 @@
+Sub InventoryUpdate()
+
+Dim Rng As Range
+Dim WorkRng As Range
+Dim InvRng As Range
+Dim WkSheet As Worksheet
+Dim InvSheet As Worksheet
+
+'On Error Resume Next
+xTitleId = "Report upper limit cell (WO)"
+xInventoryID = "Inventory sheet Cell"
+Set WorkRng = Application.Selection
+'Select Cell A2 usually
+Set WorkRng = Application.InputBox("Select Top left report cell with WO Status", xTitleId, WorkRng.Address, Type:=8)
+Set InvRng = Application.Selection
+Set InvRng = Application.InputBox("Select any Inventory cell", xInventoryID, InvRng.Address, Type:=8)
+
+Set WkSheet = WorkRng.Worksheet
+Set InvSheet = InvRng.Worksheet
+
+'sorting the inventory sheet by identifier to make it easier
+'InvSheet.Columns("D").Sort
+
+'Debug.Print "Test"
+'Debug.Print WkSheet.Name
+'Debug.Print InvSheet.Name
+
+'Need to activate a worksheet in order to pull ranges and cells, (Worksheet variable).Activate does this
+WkSheet.Activate
+Do Until IsEmpty(WorkRng)
+    Dim PartRng As Range
+    WkSheet.Activate
+    Set PartRng = Cells(WorkRng.Row, 17)
+    'Dim testVar As String
+    'testVar = PartRng.Cells.Value
+    'Debug.Print testVar
+    Dim PartArray() As String
+    Dim PartRngVal As String
+    PartRngVal = PartRng.Value
+    PartArray = Split(PartRngVal, vbLf)
+    'Debug.Print UBound(PartArray)
+    For i = 0 To (UBound(PartArray) - LBound(PartArray))
+        Dim PartStr As String
+        If (PartArray(i) <> "") Then
+            PartStr = PartArray(i)
+            Dim StringArray() As String
+            StringArray = Split(PartStr, vbTab)
+            Dim IdStr As String
+            IdStr = StringArray(0)
+            If IsNumeric(IdStr) Then
+                InvSheet.Activate
+                Dim bal As Integer
+                Dim balRng As Range
+                Set balRng = InvSheet.Columns(4).Find(What:=IdStr, LookAt:=xlWhole)
+                bal = InvSheet.Cells(balRng.Row, 9).Value
+                
+                bal = bal - 1
+                InvSheet.Cells(balRng.Row, 10).Value = bal
+                
+                If IsEmpty(Cells(balRng.Row, 11)) Then
+                    Cells(balRng.Row, 11).Value = 1
+                Else
+                    Dim val As Integer
+                    val = Cells(balRng.Row, 11).Value
+                    val = val + 1
+                    Cells(balRng.Row, 11).Value = val
+                End If
+                
+                InvSheet.Cells(balRng.Row, 10).Interior.ColorIndex = 27
+                '7/2  Add highlighting of cells
+            End If
+        End If
+    Next
+    Set Rng = WkSheet.Cells(WorkRng.Row + 1, WorkRng.Column)
+    Set WorkRng = Rng
+    
+Loop
+
+Dim ShpSheet As Worksheet
+Dim ShpIndex As Integer
+Set ShpSheet = Sheets.Add
+ShpIndex = 1
+InvSheet.Activate
+'Copy Paste any unmodified values into row J as well and leave the modified values as is, use IsEmpty on Cells
+Dim foo As Integer
+foo = 2
+Do Until IsEmpty(Cells(foo, 9))
+
+    If (IsEmpty(Cells(foo, 10))) Then
+        Cells(foo, 10).Value = Cells(foo, 9).Value
+    Else
+        Call RowTransfer(ShpIndex, foo, ShpSheet, InvSheet)
+        ShpIndex = ShpIndex + 1
+        InvSheet.Activate
+    End If
+    foo = foo + 1
+Loop
+
+End Sub
+
+Sub RowTransfer(rowIndex As Integer, hostIndex As Integer, transferSheet As Worksheet, hostSheet As Worksheet)
+    Dim diff As Double
+    Dim val1 As Double
+    Dim val2 As Double
+    transferSheet.Activate
+    hostSheet.Rows(hostIndex).Copy (transferSheet.Rows(rowIndex))
+    transferSheet.Cells(rowIndex, 9).Delete
+    transferSheet.Cells(rowIndex, 9).Delete
+    
+End Sub
+
+
+
+
+

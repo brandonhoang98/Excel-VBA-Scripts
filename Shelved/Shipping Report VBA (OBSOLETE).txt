@@ -1,0 +1,64 @@
+daily parts shipping report formula
+
+ 
+
+=IF(ISBLANK(G2),F2,IF(ISBLANK(H2),G2,IF(ISBLANK(I2),H2,IF(ISBLANK(J2),I2,J2))))
+
+
+---------------------------
+Sub FilterReport()
+
+Dim TodayDate As String
+Dim Rng As Range
+Dim WorkRng As Range
+
+On Error Resume Next
+xTitleId = "Report Filter Range"
+xTitleDate = "Report Date"
+Set WorkRng = Application.Selection
+Set WorkRng = Application.InputBox("Range", xTitleId, WorkRng.Address, Type:=8)
+TodayDate = Application.InputBox("Enter date (XX/XX/XXXX)", xTitleDate, Type:=2)
+Columns("P").Delete 'Get rid of the redundant date modified column to make the search algorithm simpler
+For Each Rng In WorkRng
+    Set RowRng = Rng.EntireRow
+    Dim Match As Range
+    Dim PartRng As Range 'Range variable for the pulled parts
+    'Set Match = RowRng.Find(What:=TodayDate)
+    'If Match Is Nothing Then 'If date cannot be found in row, delete
+       ' RowRng.Delete
+    For XDate = 13 To 16
+        If (IsEmpty(RowRng.Columns(XDate))) Then
+            RowRng.Delete
+            Exit For
+        ElseIf (CStr(RowRng.Columns(XDate).Value) <> TodayDate) Then
+            If XDate = 16 Then
+                RowRng.Delete
+                Exit For 'If last date shipped still doesn't match, delete row and exit loop
+            End If
+            'Keep traversing to see if can find matching date
+        Else
+            For I = 10 To 6 Step -1
+                If (IsEmpty(RowRng.Columns(I))) Then
+                     'If nothing in the cell, keep traversing left on sheet
+                Else
+                     RowRng.Columns(17).Value = RowRng.Columns(I).Value
+                     Exit For
+                End If
+            
+            Next I
+            'Now separating the parts into their own row and copying information
+            Set PartRng = RowRng.Column(17)
+            lLFs = VBA.Len(PartRng) - VBA.Len(VBA.Replace(PartRng, vbLf, "")) 'Maybe search for ASCII code instead of the line break?
+            If lLFs > 0 Then
+                 RowRng.Offset(1, 0).Resize(lLFs).Insert shift:=xlShiftDown 'specifies the amount of extra rows to make, inserts X amount of extra lines at the cell below, need to do this for every other column
+                 RowRng.Offset(1, 0).Resize(lLFs).Value = RowRng.Value 'New line to copy other column information
+                 Rng.Resize(lLFs + 1).Value = Application.WorksheetFunction.Transpose(VBA.Split(Rng, vbLf)) 'vbLf used as delimiter for tranposing
+            End If
+            Exit For
+        End If
+    Next
+    
+Next
+End Sub
+
+

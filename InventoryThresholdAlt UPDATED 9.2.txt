@@ -1,0 +1,59 @@
+Sub Main()
+    
+    Dim mainSheet As Worksheet
+    Dim orderSheet As Worksheet
+    Dim workRng As Range
+    Dim index As Integer
+    Dim idColumn As Integer
+    Dim balColumn As Integer
+    
+    Set mainSheet = Application.ActiveSheet
+    Set orderSheet = Sheets.Add
+    orderSheet.Name = "Parts Order List"
+    
+    mainSheet.Activate
+    Set workRng = mainSheet.Rows(1).Find(What:="Identifier", LookAt:=xlPart)
+    idColumn = workRng.Column
+    Set workRng = mainSheet.Rows(1).Find(What:="Balance", LookAt:=xlPart)
+    balColumn = workRng.Column
+    
+    index = 2
+    
+    Dim math As Integer
+    Dim bal As Integer
+    Do Until IsEmpty(Cells(index, idColumn))
+        
+        math = Cells(index, idColumn).Value
+        bal = Cells(index, balColumn).Value
+        If (math >= 1000 And math < 4000 And bal < 30) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 4000 And math < 5000 And bal < 40) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 5000 And math < 6000 And bal < 50) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 6000 And math < 7000 And bal < 60) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 7000 And math < 8000 And bal < 70) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 8000 And math < 9000 And bal < 80) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        ElseIf (math >= 9000 And math < 10000 And bal < 90) Then
+            Call rowTransfer(mainSheet, orderSheet, index)
+        End If
+        index = index + 1
+    Loop
+
+    orderSheet.Activate
+    orderSheet.Cells.Sort (orderSheet.Columns(1))
+    ActiveSheet.Columns("A:J").AutoFit
+    
+End Sub
+
+
+Sub rowTransfer(origSheet As Worksheet, destSheet As Worksheet, rowIndex As Integer)
+    destSheet.Activate
+    origSheet.Rows(rowIndex).Copy
+    destSheet.Rows(1).Insert Shift:=xlDown
+    origSheet.Activate
+End Sub
+

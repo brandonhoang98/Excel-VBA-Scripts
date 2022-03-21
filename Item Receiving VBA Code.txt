@@ -1,0 +1,21 @@
+Sub SplitCells()
+'Update by Extendoffice
+Dim Rng As Range
+Dim WorkRng As Range
+On Error Resume Next
+xTitleId = "KutoolsforExcel"
+Set WorkRng = Application.Selection
+Set WorkRng = Application.InputBox("Range", xTitleId, WorkRng.Address, Type:=8)
+For Each Rng In WorkRng
+    lLFs = VBA.Len(Rng) - VBA.Len(VBA.Replace(Rng, vbLf, "")) 'Need to find out what vbLf is returning
+    'Need to copy all the other cells during this for loop
+    If lLFs > 0 Then
+    
+        Set RowRng = Rows(Rng.Row).Cells
+        RowRng.Offset(1, 0).Resize(lLFs).Insert shift:=xlShiftDown 'specifies the amount of extra rows to make, inserts X amount of extra lines at the cell below, need to do this for every other column
+        RowRng.Offset(1, 0).Resize(lLFs).Value = RowRng.Value 'New line to copy other column information
+        Rng.Resize(lLFs + 1).Value = Application.WorksheetFunction.Transpose(VBA.Split(Rng, vbLf)) 'vbLf used as delimiter for tranposing
+        'Rng
+    End If
+Next
+End Sub

@@ -1,0 +1,57 @@
+Sub rmaSort()
+
+Dim mainSheet As Worksheet
+Dim workRng As Range
+
+Set mainSheet = Application.ActiveSheet
+
+Dim outputSheet As Worksheet
+Set outputSheet = Sheets.Add
+
+mainSheet.Activate
+
+Dim rowIndex As Integer
+Dim rmaIter As Integer
+rowIndex = 2
+
+Do Until IsEmpty(Cells(rowIndex, 1))
+    If (IsEmpty(Cells(rowIndex, 4))) Then
+        rmaIter = WorksheetFunction.CountIf(Columns(5), Cells(rowIndex, 5).Value)
+    Else
+        rmaIter = WorksheetFunction.CountIf(Columns(4), Cells(rowIndex, 4).Value)
+    End If
+    
+    Call toOneLine(rmaIter, rowIndex, mainSheet, outputSheet)
+    mainSheet.Activate
+    rowIndex = rowIndex + rmaIter
+Loop
+
+Call toOneLine(1, 1, mainSheet, outputSheet)
+
+End Sub
+
+Sub toOneLine(index As Integer, rangeIndex As Integer, origSheet As Worksheet, destSheet As Worksheet)
+
+Dim serialN As String
+Dim sku As String
+Dim color As String
+
+origSheet.Activate
+
+For Counter = rangeIndex To (rangeIndex + index - 1) Step 1
+    serialN = serialN & Cells(Counter, 1).Value & vbCrLf
+    sku = sku & Cells(Counter, 6).Value & vbCrLf
+    color = color & Cells(Counter, 7).Value & vbCrLf
+Next Counter
+
+origSheet.Rows(rangeIndex).Copy
+destSheet.Activate
+destSheet.Rows(1).Insert Shift:=xlDown
+Cells(1, 1).Value = serialN
+Cells(1, 6).Value = sku
+Cells(1, 7).Value = color
+
+End Sub
+
+
+

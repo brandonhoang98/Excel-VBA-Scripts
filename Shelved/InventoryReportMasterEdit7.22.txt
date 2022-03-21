@@ -1,0 +1,271 @@
+Sub InventoryUpdate()
+
+'USE DAILY PARTS SHIPPING - TESTING: REPORT FORMAT IS IMPORTANT
+'IF RUNNING SCRIPT, MAKE SURE CURSOR IS IN INVENTORYUPDATE() BLOCK - TOP RIGHT DROP DOWN SHOULD SAY INVENTORYUPDATE
+'OTHERWISE WILL ONLY RUN THE FIRST PART OF THE SCRIPT
+'ALTERNATIVE: CLICK ON DEVELOPER TAB AND CLICK MACRO > INVENTORYUPDATE
+
+Dim Rng As Range
+Dim WorkRng As Range
+Dim InvRng As Range
+Dim WkSheet As Worksheet
+Dim InvSheet As Worksheet
+Dim MyErr As Long
+
+'On Error Resume Next
+
+'----------------------------------------------------------------------------------------------------------------
+'Run initial filtering of shipping report table to move parts shipment info to set column
+Call FilterReport
+
+'-----------------------------------------------------------------------------------------------------------------
+
+'Take user input to assign sheets to a variable to keep track of each sheet for reference purposes
+xTitleId = "Report upper limit cell (WO)"
+xInventoryID = "Inventory sheet Cell"
+On Error Resume Next
+Set WorkRng = Application.Selection
+Set WorkRng = Application.InputBox("Select cell A2 of shipping report", xTitleId, WorkRng.Address, Type:=8)
+
+Set InvRng = Application.Selection
+Set InvRng = Application.InputBox("Select any Inventory cell on the Quickbase master inventory sheet", xInventoryID, InvRng.Address, Type:=8)
+
+Set WkSheet = WorkRng.Worksheet
+Set InvSheet = InvRng.Worksheet
+
+'-------------------------------------------------------------------------------------------------------------------
+'Need to activate a worksheet in order to pull ranges and cells, (Worksheet variable).Activate does this
+InvSheet.Activate
+WkSheet.Activate
+
+'Iterate from top to bottom of the shipping report sheet till it hits a blank row, indicating the end
+Do Until (IsEmpty(WorkRng) And IsEmpty(WorkRng.Offset(rowOffset:=0, columnOffset:=1)))
+    Dim PartRng As Range
+    WkSheet.Activate
+    Set PartRng = Cells(WorkRng.Row, 17)
+    Dim PartArray() As String
+    Dim PartRngVal As String
+    PartRngVal = PartRng.Value
+    PartArray = Split(PartRngVal, vbLf)
+'-------------------------------------------------------------------------------
+    'Check for empty line that would indicate more than one shipment for the trip here
+    Dim ArrayBound As Integer
+    For I = 0 To (UBound(PartArray) - LBound(PartArray))
+	'Check for empty lines or single spaces
+        If Trim(PartArray(I) & vbNullString) = vbNullString Or Len(PartArray(I)) < 2 Then
+            If (I > 0 And I < (UBound(PartArray) - LBound(PartArray))) Then
+                If (PartArray(I - 1) <> "" And PartArray(I + 1) <> "") Then
+                  ArrayBound = I
+                  Exit For
+                End If
+            End If
+            Exit For
+        End If
+        ArrayBound = I
+    Next
+    
+    '--------------------------------------------------------------------------------
+    
+    For I = 0 To ArrayBound
+        Dim PartStr As String
+        If (PartArray(I) <> "") Then
+            PartStr = PartArray(I)
+            Dim StringArray() As String
+            StringArray = Split(PartStr, vbTab)
+            Dim IdStr As String
+            IdStr = StringArray(0) 'Pull first tab delimited element, should be identifier with correct format
+            If IsNumeric(IdStr) Then
+                InvSheet.Activate
+                Dim bal As Integer
+                Dim balRng As Range
+                Set balRng = InvSheet.Columns(4).Find(What:=IdStr, LookAt:=xlWhole) 'Search in the inventory sheet for the identifier and assign the cell to balRng
+                If IsEmpty(Cells(balRng.Row, 10)) Then
+                    InvSheet.Cells(balRng.Row, 10).Value = InvSheet.Cells(balRng.Row, 9).Value
+                End If
+                
+                bal = InvSheet.Cells(balRng.Row, 10).Value
+                
+                bal = bal - 1
+                InvSheet.Cells(balRng.Row, 10).Value = bal
+                
+                If IsEmpty(Cells(balRng.Row, 11)) Then
+                    Cells(balRng.Row, 11).Value = 1
+                Else
+                    Dim val As Integer
+                    val = Cells(balRng.Row, 11).Value
+                    val = val + 1
+                    Cells(balRng.Row, 11).Value = val
+                End If
+                
+                InvSheet.Cells(balRng.Row, 9).Interior.ColorIndex = 27
+                InvSheet.Cells(balRng.Row, 10).Interior.ColorIndex = 27
+                '7/2  Added highlighting of cells
+            End If
+        End If
+    Next
+    Set Rng = WkSheet.Cells(WorkRng.Row + 1, WorkRng.Column)
+    Set WorkRng = Rng
+    
+Loop
+
+'
+
+Dim ShpSheet As Worksheet
+Dim ShpIndex As Integer
+InvSheet.Activate
+Set ShpSheet = Sheets.Add
+ShpIndex = 1
+InvSheet.Activate
+'Copy Paste any unmodified values into row J as well and leave the modified values as is, use IsEmpty on Cells
+Dim foo As Integer
+foo = 2
+Do Until IsEmpty(Cells(foo, 9))
+
+    If (IsEmpty(Cells(foo, 10))) Then
+        Cells(foo, 10).Value = Cells(foo, 9).Value
+    Else
+        If (Not IsEmpty(Cells(foo, 11))) Then
+            Call RowTransfer(ShpIndex, foo, ShpSheet, InvSheet)
+            ShpIndex = ShpIndex + 1
+            InvSheet.Activate
+        End If
+    End If
+    foo = foo + 1
+Loop
+'---------
+Dim ColIndex As Integer
+InvSheet.Activate
+Set ShpSheet = Sheets.Add
+Call ShipTransfer(WkSheet, ShpSheet)
+'---------
+End Sub
+
+Sub RowTransfer(rowIndex As Integer, hostIndex As Integer, transferSheet As Worksheet, hostSheet As Worksheet)
+    Dim diff As Double
+    Dim val1 As Double
+    Dim val2 As Double
+    transferSheet.Activate
+    hostSheet.Rows(hostIndex).Copy (transferSheet.Rows(rowIndex))
+    transferSheet.Cells(rowIndex, 9).Delete
+    transferSheet.Cells(rowIndex, 9).Delete
+    
+End Sub
+
+Sub ShipTransfer(hostSheet As Worksheet, transferSheet As Worksheet)
+    'col 2, 3/4, 5, 17
+    transferSheet.Activate
+    hostSheet.Columns(2).Copy (transferSheet.Columns(1))
+    hostSheet.Columns(3).Copy (transferSheet.Columns(2))
+    hostSheet.Columns(4).Copy (transferSheet.Columns(3))
+    hostSheet.Columns(5).Copy (transferSheet.Columns(4))
+    hostSheet.Columns(17).Copy (transferSheet.Columns(5))
+    Dim CellArray() As String
+    Dim CellValue As String
+    Dim StringArray() As String
+    Dim StrValue As String
+    Dim Index As Integer
+    Index = 2
+    Do Until IsEmpty(Cells(Index, 5))
+        CellArray = Split(transferSheet.Cells(Index, 5), vbLf)
+        Dim CellBound As Integer
+        For I = 0 To (UBound(CellArray) - LBound(CellArray))
+            If Trim(CellArray(I) & vbNullString) = vbNullString Or Len(CellArray(I)) < 2 Then
+                If (I > 0 And I < (UBound(CellArray) - LBound(CellArray))) Then
+                    If (CellArray(I - 1) <> "" And CellArray(I + 1) <> "") Then
+                    CellBound = I
+                    Exit For
+                    End If
+                End If
+                Exit For
+            End If
+            CellBound = I
+        Next
+        
+        For I = 0 To CellBound
+            If (CellArray(I) <> "") Then
+                StringArray = Split(CellArray(I), vbTab)
+                If (IsNumeric(StringArray(0))) Then
+                    transferSheet.Cells(Index, 6).Value = transferSheet.Cells(Index, 6).Value & CellArray(I) & vbLf
+                Else
+                    transferSheet.Cells(Index, 7).Value = transferSheet.Cells(Index, 7).Value & CellArray(I) & vbLf
+                End If
+            End If
+        Next
+        Index = Index + 1
+    Loop
+    
+    'transferSheet.Columns("A:G").VerticalAlignment = xlTop
+    'With transferSheet.Cells
+    '    .EntireColumn.AutoFit
+    '    .EntireRow.AutoFit
+    'End With
+
+End Sub
+
+
+Sub FilterReport()
+
+Dim TodayDate As String
+Dim Rng As Range
+Dim WorkRng As Range
+Dim LowerBound As Integer
+Dim MyErr As Long
+
+xxTitleId = "Report Lower Boundary"
+xxTitleDate = "Report Date"
+On Error Resume Next
+Set WorkRng = Application.Selection
+Set WorkRng = Application.InputBox("Select last row of shipping report", xxTitleId, WorkRng.Address, Type:=8)
+TodayDate = Application.InputBox("Enter date (XX/XX/XXXX)", xxTitleDate, Type:=2)
+WorkRng.Worksheet.Activate
+Columns("P").Delete 'Get rid of the redundant date modified column to make the search algorithm simpler
+
+
+LowerBound = WorkRng.Row
+Dim j As Integer
+Dim ShipDate As String
+'Primary Loop to filter out entries that don't have part shipping on the day
+For I = LowerBound To 2 Step -1
+    Set Rng = Rows(I).Cells
+    j = 13
+    Do While j > 10
+        ShipDate = CStr(Cells(I, j).Value)
+        If (ShipDate = TodayDate) Then
+           Exit Do
+        Else
+           j = j - 1
+        End If
+    Loop
+        
+    If (j = 10) Then
+        ShipDate = CStr(Cells(I, j).Value)
+        If (ShipDate <> TodayDate) Then
+           Rng.EntireRow.Delete
+        End If
+    End If
+Next
+
+'Dim PartRng As Range
+Dim k As Integer
+k = 2
+Do Until k > LowerBound
+    Dim p As Integer
+    p = 9
+    Do While IsEmpty(Cells(k, p).Value) And p > 6
+        p = p - 1
+    Loop
+    
+    Dim RowRng As Range
+    Cells(k, 17) = Cells(k, p)
+    'Set PartRng = Cells(k, 17)
+    'Set RowRng = Rows(k).Cells
+
+    k = k + 1
+Loop
+Exit Sub
+End Sub
+
+
+
+
+

@@ -1,0 +1,59 @@
+Sub PartCount()
+    Dim partSheet As Worksheet
+    Dim reportSheet As Worksheet
+    Dim index As Integer
+    Dim cellArray() As String
+    
+    Set reportSheet = Application.ActiveSheet
+    Set partSheet = Sheets.Add
+    partSheet.Name = "Parts count"
+    
+    reportSheet.Activate
+    index = 2
+    Do Until IsEmpty(Cells(index, 2))
+        For I = 9 To 5 Step -1
+            If Not IsEmpty(Cells(index, I)) Then
+                cellArray = Split(Cells(index, I).Value, vbLf)
+                For J = 0 To (UBound(cellArray) - LBound(cellArray))
+                    Dim arrayInput As String
+                    arrayInput = cellArray(J)
+                    Call partTransfer(reportSheet, partSheet, arrayInput)
+                Next
+            End If
+            reportSheet.Activate
+        Next
+        index = index + 1
+        reportSheet.Activate
+    Loop
+
+End Sub
+
+Sub partTransfer(origSheet As Worksheet, destSheet As Worksheet, textIn As String)
+    origSheet.Activate
+    Dim partName As String
+    Dim partSplit() As String
+    If InStr(textIn, vbTab) > 0 And Len(textIn) > 3 Then
+        partSplit = Split(textIn, vbTab)
+        partName = partSplit(2)
+    Else
+        partName = textIn
+    End If
+    
+    If IsNumeric(Left(partName, 1)) And Mid(textIn, 3, 2) = "x " Then
+        partName = Right(partName, Len(partName) - 3)
+    End If
+    
+    Dim findRange As Range
+    destSheet.Activate
+    Set findRange = destSheet.Columns(1).Find(What:=partName, LookAt:=xlPart)
+    If (findRange Is Nothing) Then
+        destSheet.Rows(1).Insert shift:=xlShiftDown
+        Range("A1").Value = partName
+        Range("B1").Value = 1
+    Else
+        findRange.Offset(0, 1).Value = findRange.Offset(0, 1).Value + 1
+    End If
+    
+End Sub
+
+

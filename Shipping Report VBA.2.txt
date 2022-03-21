@@ -1,0 +1,77 @@
+Sub FilterReport()
+
+Dim TodayDate As String
+Dim Rng As Range
+Dim WorkRng As Range
+Dim LowerBound As Integer
+
+On Error Resume Next
+xTitleId = "Report Lower Boundary"
+xTitleDate = "Report Date"
+Set WorkRng = Application.Selection
+Set WorkRng = Application.InputBox("Lowest Row/Cell on Table", xTitleId, WorkRng.Address, Type:=8)
+TodayDate = Application.InputBox("Enter date (XX/XX/XXXX)", xTitleDate, Type:=2)
+Columns("P").Delete 'Get rid of the redundant date modified column to make the search algorithm simpler
+
+LowerBound = WorkRng.Row
+
+'Primary Loop to filter out entries that don't have part shipping on the day
+For I = LowerBound To 2 Step -1
+    Set Rng = Rows(I).Cells
+    If (Cells(I, 1).Value = "In Progress") Then
+        Rng.EntireRow.Delete
+    Else
+        Dim j As Integer
+        j = 15
+        Do While IsEmpty(Cells(I, j)) And j > 12
+            j = j - 1
+        Loop
+        Dim ShipDate As String
+        ShipDate = CStr(Cells(I, j).Value)
+        If (ShipDate <> TodayDate) Then
+            Rng.EntireRow.Delete
+        End If
+    End If
+Next
+
+Dim PartRng As Range
+Dim k As Integer
+k = 2
+Do Until IsEmpty(Cells(k, 1).Value)
+    Dim p As Integer
+    p = 10
+    Do While IsEmpty(Cells(k, p).Value) And p > 6
+        p = p - 1
+    Loop
+    
+    Dim RowRng As Range
+    Cells(k, 17) = Cells(k, p)
+    PartRng = Cells(k, 17)
+    RowRng = Rows(k).Cells
+    'Dim splitVals() As Variant
+    'Dim lLFs As Long
+    
+    'This function to split doesn't work at the moment, needs separate script to run to work
+    'splitVals = Split(PartRng.Value, vbLf)
+    'lLFs = UBound(splitVals)
+    'If lLFs > 0 Then
+        'RowRng.Offset(1, 0).Resize(RowSize:=lLFs).Insert shift:=xlShiftDown 'specifies the amount of extra rows to make, inserts X amount of extra lines at the cell below, need to do this for every other column
+        'RowRng.Offset(1, 0).Resize(RowSize:=lLFs).Value = RowRng.Value 'New line to copy other column information
+        'PartRng.Resize(RowSize:=lLFs + 1).Value = Application.WorksheetFunction.Transpose(splitVals) 'vbLf used as delimiter for tranposing
+        'k = k + lLFs
+    'End If
+    k = k + 1
+Loop
+
+End Sub
+
+'Alternate split method:
+'Dim splitVals As Variant
+'Dim totalVals As Long
+'
+'splitVals = Split(ActiveCell.Value, Chr(10))
+'totalVals = UBound(splitVals)
+'Range(Cells(ActiveCell.Row, ActiveCell.Column + 1), Cells(ActiveCell.Row, ActiveCell.Column + 1 + totalVals)).Value = splitVals
+'
+
+
